@@ -51,6 +51,15 @@ DigitalOut LEDAMARILLO(PA_6);
 /* Global variables ----------------------------------------------------------*/
 Timer myTimer;
 e_estadoBoton e_estadob1;
+uint8_t cont=0;
+uint8_t contAux=0;
+uint32_t mask=0;
+uint32_t tAntHB=0;//tiempo anterior del HEARTBEAT
+uint32_t tAntB1=0;//tiempo anterior del boton
+uint32_t tAntL1=0;//tiempo anterior del led
+uint32_t tAntPul=0;//tiempo anterior de la pulsacion
+uint32_t tPulsado=0;//tiempo de duracion del pulso
+uint8_t modoPul=0;//si vale 0 es intermitente si vale 1 constante
 /* END Global variables ------------------------------------------------------*/
 
 
@@ -61,12 +70,7 @@ e_estadoBoton e_estadob1;
 int main()
 {
 /* Local variables -----------------------------------------------------------*/
-uint8_t cont=0;
-uint8_t contAux=0;
-uint32_t mask=0;
-uint32_t tAntHB=0;//tiempo anterior del HEARTBEAT
-uint32_t tAntB1=0;//tiempo anterior del boton
-uint32_t tAntL1=0;//tiempo anterior del led
+
 /* END Local variables -------------------------------------------------------*/
 
 
@@ -98,38 +102,46 @@ uint32_t tAntL1=0;//tiempo anterior del led
                          if(cont==0){
                             mask=0;
                          }
-                         LEDAMARILLO=0; 
+                         LEDAMARILLO=0;
+                         //leemos el tiempo de la pulsacion
+                         tAntPul=myTimer.read_ms(); 
                         }
                     break;
                 case DOWN:
                         if(BOTON.read()==0){//si el boton ya no esta presionado se pasa a subiendo
                             e_estadob1= RISSING;
                             LEDAMARILLO=1;
+                            if(myTimer.read_ms()-tAntPul>=1000){
+                                modoPul=1;
+                            }
                         }
                     break;
                 case RISSING:
                         if(BOTON.read()==0){//si el boton sigue sin estar presionado se pasa a arriba
                             e_estadob1= UP;
                         }
-                        //tAntL1=myTimer.read_ms(); 
+                        tPulsado=myTimer.read_ms()-tAntPul;
                     break;
                 default: e_estadob1=UP;
                     break;
             }
         }
             
-            if(myTimer.read_ms()-tAntL1 >= INTERVALOLED){
-                tAntL1=myTimer.read_ms();
-                LEDROJO= (~mask) & 1<<contAux;//comprobamos con la mascara si esta encendido o apagado
-                contAux=contAux & LIMITEAUX;//reiniciamos el contador
-                contAux++;
-            }
+                if(modoPul){//modo para larga pulsacion
+                    LEDROJO=0;
+                    if(myTimer.read_ms()-tAntL1>=tPulsado){
+                        LEDROJO=1;
+                        modoPul=0;
+                    }
+                }else{//modo para clave morse
+                    if(myTimer.read_ms()-tAntL1 >= INTERVALOLED){
+                        tAntL1=myTimer.read_ms();
+                        LEDROJO= (~mask) & 1<<contAux;//comprobamos con la mascara si esta encendido o apagado
+                        contAux=contAux & LIMITEAUX;//reiniciamos el contador
+                        contAux++;
+                    }
+                }
 
-
-
-
-            
-          
     }
 
 /* END User code -------------------------------------------------------------*/
